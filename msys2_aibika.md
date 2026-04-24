@@ -1,0 +1,564 @@
+# Aibika: Ruby applications in a single executable on Windows
+
+## Purpose
+
+Aibika packages a Ruby application into a single executable for the Windows
+platform.
+
+The resulting executable is self-extracting and self-running, containing:
+
+* the Ruby interpreter;
+* packaged Ruby source code; and
+* any additionally needed Ruby libraries or DLLs.
+
+NOTE: Aibika was created from the Metanorma-enhanced fork of the
+https://github.com/larsch/ocra[One-click Ruby Application "Ocra" packager].
+The first Aibika version was launched as 1.3.12. The last version of Ocra
+was 1.3.11 from 2020.
+
+NOTE: Aibika is considered a temporary solution to the full-fledged
+functionality of https://github.com/tamatebako/tebako[Tebako], which provides a
+user-space mounted-disk experience with minimal intervention.
+
+
+## Supported platforms
+
+Aibika only supports Windows.
+
+
+## Supported Ruby versions
+
+The Aibika packager supports the following versions of Ruby for packaging:
+
+* 2.7.7
+* 3.0.6
+* 3.1.4
+* 3.2.2
+
+
+## Features
+
+* LZMA Compression (optional, default on)
+* Both windowed/console mode supported
+* Includes gems based on usage, or from a Bundler Gemfile
+
+
+## Installation
+
+[source,sh]
+----
+    gem install aibika
+----
+
+// Stand-alone version: Get abika.rb from
+// https://github.com/tamatebako/aibika/releases/
+// Requires nothing but a working Ruby and MinGW installations on Windows
+
+## Migration from Ocra
+
+Aibika 1.3.12 is fully compatible with Ocra 1.13.11
+In order to migrate your build scripts replace ocra invokations with aibika.
+
+## Synopsis
+
+### Building an executable
+
+[source,sh]
+----
+    $ aibika script.rb
+----
+
+Will package `script.rb`, the Ruby interpreter and all
+dependencies (gems and DLLs) into an executable named
+`script.exe`.
+
+### Command line
+
+[source,sh]
+----
+    $ aibika [options] script.rb [<other files> ...] [-- <script arguments> ...]
+----
+
+### Options
+
+[source,sh]
+----
+    $ aibika --help
+----
+
+Aibika options:
+
+[source]
+----
+	--help             Display this information.
+	--quiet            Suppress output while building executable.
+	--verbose          Show extra output while building executable.
+	--version          Display version number and exit.
+----
+
+Packaging options:
+
+[source]
+----
+	--dll dllname      Include additional DLLs from the Ruby bindir.
+	--add-all-core     Add all core ruby libraries to the executable.
+	--gemfile <file>   Add all gems and dependencies listed in a Bundler Gemfile.
+	--no-enc           Exclude encoding support files
+	--allow-self       Include self (aibika gem) if detected or specified
+			This option is required only if aibika gem is deployed as a part
+			of broader bundled solution
+----
+
+Gem content detection modes:
+
+[source]
+----
+	--gem-minimal[=gem1,..]  Include only loaded scripts
+	--gem-guess=[gem1,...]   Include loaded scripts & best guess (DEFAULT)
+	--gem-all[=gem1,..]      Include all scripts & files
+	--gem-full[=gem1,..]     Include EVERYTHING
+	--gem-spec[=gem1,..]     Include files in gemspec (Does not work with Rubygems 1.7+)
+
+	--[no-]gem-scripts[=..]  Other script files than those loaded
+	--[no-]gem-files[=..]    Other files (e.g. data files)
+	--[no-]gem-extras[=..]   Extra files (README, etc.)
+----
+
+Gem modes:
+
+* *minimal*: loaded scripts
+* *guess*: loaded scripts and other files
+* *all*: loaded scripts, other scripts, other files (except extras)
+* *full*: Everything found in the gem directory
+
+File groups:
+
+* *scripts*: .rb/.rbw files
+* *extras*: C/C++ sources, object files, test, spec, README
+* *files*: all other files
+
+Auto-detection options:
+
+----
+	--no-dep-run       Don't run script.rb to check for dependencies.
+	--no-autoload      Don't load/include script.rb's autoloads.
+	--no-autodll       Disable detection of runtime DLL dependencies.
+----
+
+Output options:
+
+----
+	--output <file>    Name the exe to generate. Defaults to ./<scriptname>.exe.
+	--no-lzma          Disable LZMA compression of the executable.
+	--innosetup <file> Use given Inno Setup script (.iss) to create an installer.
+----
+
+Executable options:
+
+----
+	--windows          Force Windows application (rubyw.exe)
+	--console          Force console application (ruby.exe)
+	--chdir-first      When exe starts, change working directory to app dir.
+	--icon <ico>       Replace icon with a custom one.
+	--debug            Executable will be verbose.
+	--debug-extract    Executable will unpack to local dir and not delete after.
+----
+
+
+### Compilation
+
+* Aibika will load your script (using `Kernel#load`) and build
+  the executable when it exits.
+
+* Your program should 'require' all necessary files when invoked without
+  arguments, so Aibika can detect all dependencies.
+
+* DLLs are detected automatically but only those located in your Ruby
+  installation are included.
+
+* .rb files will become console applications. .rbw files will become
+  windowed application (without a console window popping
+  up). Alternatively, use the `--console` or
+  `--windows` options.
+
+### Running your application
+
+* The 'current working directory' is not changed by Aibika when running
+  your application. You must change to the installation or temporary
+  directory yourself. See also below.
+* When the application is running, the `AIBIKA_EXECUTABLE` environment
+  variable points to the .exe (with full path).
+* The temporary location of the script can be obtained by inspected
+  the `$0` variable.
+* Aibika does not set up the include path. Use `$:.unshift File.dirname($0)`
+  at the start of your script if you need to `require` additional source files
+  from the same directory as your main script.
+
+### Pitfalls
+
+* Avoid modifying load paths at run time. Specify load paths using -I
+  or `RUBYLIB` if you must, but don't expect Aibika to preserve them for
+  runtime. Aibika may pack sources into other directories than you
+  expect.
+* If you use `.rbw` files or the `--windows` option, then check
+  that your application works with `rubyw.exe` before trying with Aibika.
+* Avoid absolute paths in your code and when invoking Aibika.
+
+## Requirements
+
+* Windows
+* Working Ruby installation
+* MinGW Installation
+
+## Aibika examples available at https://tebako.org[a tebako blog]
+
+* https://www.tebako.org/blog/2023-08-24-introducing-aibika-and-ocra[Single-file packaging]
+* https://www.tebako.org/blog/2023-08-24-introducing-aibika-and-ocra[Packaging with Gemfile]
+
+## Technical details
+
+Aibika first runs the target script in order to detect any files that
+are loaded and used at runtime (Using `Kernel#require` and
+`Kernel#load`).
+
+Aibika embeds everything needed to run a Ruby script into a single
+executable file. The file contains the .exe stub which is compiled
+from C-code, and a custom opcode format containing instructions to
+create directories, save files, set environment variables and run
+programs. The Aibika script generates this executable and the
+instructions to be run when it is launched.
+
+When executed, the Aibika stub extracts the Ruby interpreter and your
+scripts into a temporary directory. The directory will contains the
+same directory layout as your Ruby installation. The source files for
+your application will be put in the 'src' subdirectory.
+
+### Libraries
+
+Any code that is loaded through `Kernel#require` when your
+script is executed will be included in the Aibika
+executable. Conditionally loaded code will not be loaded and included
+in the executable unless the code is actually run when Aibika invokes
+your script. Otherwise, Aibika won't know about it and will not include
+the source files.
+
+RubyGems are handled specially. Whenever a file from a Gem is
+detected, Aibika will attempt to include all the required files from
+that specific Gem, expect some unlikely needed files such as readme's
+and other documentation. This behaviour can be controlled by using the
+`--gem-*` options. Behaviour can be changed for all gems or specific
+gems using `--gem-*=gemname`.
+
+Libraries found in non-standard path (for example, if you invoke Aibika
+with `ruby -I some/path`) will be placed into the site `dir`
+(`lib/ruby/site_ruby`). Avoid changing `$LOAD_PATH` or
+`$:` from your script to include paths outside your source
+tree, since Aibika may place the files elsewhere when extracted into the
+temporary directory.
+
+In case your script (or any of its dependencies) sets up autoloaded
+module using `Kernel#autoload`, Aibika will automatically try to
+load them to ensure that they are all included in the
+executable. Modules that doesn't exist will be ignored (a warning will
+be logged).
+
+Dynamic link libraries (`.dll` files, for example `WxWidgets`, or other
+source files) will be detected and included by Aibika.
+
+### Including libraries non-automatically
+
+If an application or framework is complicated enough that it tends
+to confuse Aibika's automatic dependency resolution, then you can
+use other means to specify what needs to be packaged with your app.
+
+To disable automatic dependency resolution, use the `--no-dep-run`
+option; with it, Aibika will skip executing your program during the
+build process. This on the other hand requires using `--gem-full` option
+(see more below); otherwise Aibika will not include all the necessary
+files for the gems.
+
+You will also probably need to use the `--add-all-core` option to
+include the Ruby core libraries.
+
+If your app uses gems, then you can specify them in a
+Bundler Gemfile, then use the --gemfile
+option to supply it to Aibika. Aibika will automatically include all
+gems specified, and all their dependencies.
+
+NOTE: This assumes that the gems are installed in your system,
+*not* locally packaged inside the app directory by "bundle package".
+
+These options are particularly useful for packaging Rails
+applications.  For example, to package a Rails 3 app in the
+directory "someapp" and create an exe named "someapp.exe", without
+actually running the app during the build, you could use the
+following command:
+
+[source,sh]
+----
+    $ aibika someapp/script/rails someapp --output someapp.exe --add-all-core \
+    --gemfile someapp/Gemfile --no-dep-run --gem-full --chdir-first -- server
+----
+
+Note the space between `--` and `server`! It's important; `server` is
+an argument to be passed to rails when the script is ran.
+
+Rails 2 apps can be packaged similarly, though you will have to
+integrate them with Bundler first.
+
+### Gem handling
+
+By default, Aibika includes all scripts that are loaded by your script
+when it is run before packaging. Aibika detects which gems are using and
+includes any additional non-script files from those gems, except
+trivial files such as C/C++ source code, object files, READMEs, unit
+tests, specs, etc.
+
+This behaviour can be changed by using the --gem-* options. There are
+four possible modes:
+
+* *minimal*: Include only loaded scripts
+* *guess*: Include loaded scripts and important files (DEFAULT)
+* *all*: Include all scripts and important files
+* *full*: Include all files
+
+If you find that files are missing from the resulting executable, try
+first with `--gem-all=gemname` for the gem that is missing, and if that
+does not work, try `--gem-full=gemname`. The paranoid can use `--gem-full`
+to include all files for all required gems.
+
+### Creating an installer for your application
+
+To make your application start up quicker, or to allow it to
+keep files in its application directory between runs, or if
+you just want to make your program seem more like a "regular"
+Windows application, you can have Aibika generate an installer
+for your app with the free Inno Setup software.
+
+You will first have to download and install Inno Setup 5 or
+later, and also add its directory to your `PATH` (so that Aibika
+can find the ISCC compiler program). Once you've done that,
+you can use the `--innosetup` option to Aibika to supply an
+Inno Setup script. Do not add any `[Files]` or `[Dirs]` sections
+to the script; Aibika will figure those out itself.
+
+To continue the Rails example above, let's package the Rails 3
+app into an installer. Save the following as `someapp.iss`:
+
+[source,toml]
+----
+	[Setup]
+	AppName=SomeApp
+	AppVersion=0.1
+	DefaultDirName={pf}\SomeApp
+	DefaultGroupName=SomeApp
+	OutputBaseFilename=SomeAppInstaller
+
+	[Icons]
+	Name: "{group}\SomeApp"; Filename: "{app}\someapp.exe"
+	Name: "{group}\Uninstall SomeApp"; Filename: "{uninstallexe}"
+----
+
+Then run this command:
+
+[source,sh]
+----
+    $ aibika someapp/script/rails someapp --output someapp.exe --add-all-core \
+    --gemfile someapp/Gemfile --no-dep-run --gem-full --chdir-first --no-lzma \
+    --innosetup someapp.iss -- server
+----
+
+If all goes well, a file named "SomeAppInstaller.exe" will be placed
+into the Output directory.
+
+### Environment variables
+
+Aibika executables clear the `RUBYLIB` environment variable before your
+script is launched. This is done to ensure that your script does not
+use load paths from the end user's Ruby installation.
+
+Aibika executables set the `RUBYOPT` environment variable to the value it
+had when you invoked Aibika. For example, if you had `"RUBYOPT=rubygems"`
+on your build PC, Aibika ensures that it is also set on PC's running the
+executables.
+
+Aibika executables set `OCRA_EXECUTABLE` to the full path of the
+executable, for example:
+
+[source,rb]
+----
+    ENV["AIBIKA_EXECUTABLE"] # => C:\Program Files\MyApp\MyApp.exe
+----
+
+### Working directory
+
+The Aibika executable does not change the working directory when it is
+launched, unless you use the `--chdir-first` option.
+
+You should not assume that the current working directory when invoking
+an executable built with .exe is the location of the source script. It
+can be the directory where the executable is placed (when invoked
+through the Windows Explorer), the users' current working directory
+(when invoking from the Command Prompt), or even
+`C:\\WINDOWS\\SYSTEM32` when the executable is invoked through
+a file association.
+
+With the `--chdir-first` option, the working directory will
+always be the common parent directory of your source files. This
+should be fine for most applications. However, if your application
+is designed to run from the command line and take filenames as
+arguments, then you cannot use this option.
+
+If you wish to maintain the user's working directory, but need to
+`require` additional Ruby scripts from the source directory, you can
+add the following line to your script:
+
+[source,rb]
+----
+    $LOAD_PATH.unshift File.dirname($0)
+----
+
+### Load path mangling
+
+Adding paths to `$LOAD_PATH` or `$:` at runtime is not
+recommended. Adding relative load paths depends on the working
+directory being the same as where the script is located (See
+above). If you have additional library files in directories below the
+directory containing your source script you can use this idiom:
+
+[source,rb]
+----
+    $LOAD_PATH.unshift File.join(File.dirname($0), 'path/to/script')
+----
+
+### Detecting
+
+You can detect whether Aibika is currently building your script by
+looking for the 'Aibika' constant. If it is defined, Aibika is currently
+building the executable from your script. For example, you can use
+this to avoid opening a GUI window when compiling executables:
+
+[source,rb]
+----
+	app = MyApp.new
+	app.main_loop unless defined?(Aibika)
+----
+
+### Additional files and resources
+
+You can add additional files to the Aibika executable (for example
+images) by appending them to the command line. They should be placed
+in the source directory with your main script (or a subdirectory).
+
+[source,sh]
+----
+    $ aibika mainscript.rb someimage.jpeg docs/document.txt
+----
+
+This will create the following layout in the temporary directory when
+your program is executed:
+
+----
+	src/mainscript.rb
+	src/someimage.jpeg
+	src/docs/document.txt
+----
+
+Both files, directories and glob patterns can be specified on the
+command line. Files will be added as-is. If a directory is specified,
+Aibika will include all files found below that directory.
+
+Glob patterns (See `Dir.glob`) can be used to specify a specific set of files,
+for example:
+
+[source,sh]
+----
+    $ aibika script.rb assets/**/*.png
+----
+
+### Command Line Arguments
+
+To pass command line argument to your script (both while building and
+when run from the resulting executable), specify them after a
+`--` marker. For example:
+
+[source,sh]
+----
+    $ aibika script.rb -- --some-options=value
+----
+
+This will pass `--some-options=value` to the script when
+build and when running the executable. Any extra argument specified by
+the user when invoking the executable will be appended after the
+compile-time arguments.
+
+### Window/Console
+
+By default, Aibika builds console application from `.rb` files and
+windowed applications (without console window) from `.rbw` files.
+
+Ruby on Windows provides two executables: `ruby.exe` is a console mode
+application and `rubyw.exe` is a windowed application which does not
+bring up a console window when launched using the Windows Explorer.
+By default, or if the `--console` option is used, Aibika will
+use the console runtime (`ruby.exe`). Aibika will automatically select the
+windowed runtime when your script has the ".rbw" extension, or if you
+specify the `--windows` command line option.
+
+If your application works in console mode but not in windowed mode,
+first check if your script works without Aibika using `rubyw.exe`. A
+script that prints to standard output (using puts, print etc.) will
+eventually cause an exception when run with `rubyw.exe` (when the IO
+buffers run full).
+
+You can also try wrapping your script in an exception handler that
+logs any errors to a file:
+
+[source,ruby]
+----
+	begin
+	  # your script here
+	rescue Exception => e
+	  File.open("except.log") do |f|
+		f.puts e.inspect
+		f.puts e.backtrace
+	  end
+	end
+----
+
+
+## Credits
+
+Thanks for Igor Pavlov for the LZMA compressor and decompressor. The
+source code used was place into Public Domain by Igor Pavlov.
+
+Erik Veenstra for `rubyscript2exe` which provided inspiration.
+
+Dice for the default `.exe` icon (`vit-ruby.ico`,
+http://ruby.morphball.net/vit-ruby-ico_en.html)
+
+
+## License
+
+MIT. See link:LICENSE.md[].
+
+
+## Trivia: origin of name
+
+Aibika started as a fork of the
+https://github.com/larsch/ocra[One-click Ruby Application "Ocra" packager].
+"Ocra" happens to be a wordplay on "okra", the plant name, so the name
+of the _flower okra_ plant, "aibika" was adopted.
+
+The _flower okra_ is named as it blooms flowers similar to the okra, and refers to the
+_https://en.wikipedia.org/wiki/Abelmoschus_manihot[Abelmoschus manihot]_ plant.
+_Aibika_ refers to the Spanish name of the flower okra.
+
+Aibika, called トロロアオイ (黄蜀葵, tororoaoi), is a key ingredient to the
+creation of Washi (和紙, Japanese paper).
+
+Japanese paper is thin, durable and long-lasting because of its use of aibika.
+In the manufacturing of Japanese paper, mucus extracted from the root of aibika
+is used to uniformize the spread of fibers. Without this mucus in the
+solution, fibers will quickly get excluded from the solution, resulting in
+fibers not scattered evenly.

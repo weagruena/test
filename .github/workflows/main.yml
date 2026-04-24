@@ -4,7 +4,39 @@ on: [push]
 jobs:
   build:
     runs-on: windows-latest
+    
+    defaults:
+      run:
+        # Standard MSYS2 shell
+        shell: msys2 {0}
+        
     steps:
-      - name: Code auschecken
-        run: 
+      - name: Checkout code
+        run: actions/checkout@v6
+      
+      # Setup Ruby
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          # bundler-cache: true
+          
+      # Setup build tools
+      - name: Setup MSYS2 + Tk
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-ucrt-x86_64_gcc
+            mingw-w64-ucrt-x86_64_ruby
+            mingw-w64-ucrt-x86_64_tcl
+            mingw-w64-ucrt-x86_64_tk
+            
+      # Setup Tk + Aibika
+      - name: Setup Tk
+        run: gem install Tk
+      - name: Setup Aibika
+        run: gem install Aibika
         
